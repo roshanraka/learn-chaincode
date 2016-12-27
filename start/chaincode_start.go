@@ -88,8 +88,8 @@ func (t *SimpleChaincode) Query(stub *shim.ChaincodeStub, function string, args 
 
 	// Handle different functions
 	if function == "read" { 
-		return []byte("hello world"), nil
-		//return t.read(stub, args)
+		//return []byte("hello world"), nil
+		return t.read(stub, args)
 	}
 	fmt.Println("query did not find func: " + function)
 
