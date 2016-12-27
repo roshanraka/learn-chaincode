@@ -19,7 +19,7 @@ package main
 import (
 	"errors"
 	"fmt"
-
+    "strconv"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 )
 
@@ -40,11 +40,11 @@ func main() {
 }
 
 // Init resets all the things
-func (t *SimpleChaincode) Init(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	
 
 	var custA, custB string //custName
-
+    var err error 
 	if len(args) != 2 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 4")
 	}
@@ -54,12 +54,12 @@ func (t *SimpleChaincode) Init(stub *shim.ChaincodeStub, function string, args [
 	custB = args[1]
 
 	// Write the state to the ledger
-	err = stub.PutState(A, []byte("1000"))
+	err = stub.PutState(custA, []byte("1000"))
 	if err != nil {
 		return nil, err
 	}
 
-	err = stub.PutState(B, []byte("1000"))
+	err = stub.PutState(custB, []byte("1000"))
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +134,9 @@ func (t *SimpleChaincode) read(stub *shim.ChaincodeStub, args []string) ([]byte,
 }
 
 func (t *SimpleChaincode) transfer(stub *shim.ChaincodeStub, args []string) ([]byte, error){
-	fmt.Println("transfer is running " + function)
+	
+    fmt.Println("transfer is running ")
+
 	if len(args) != 3{
 		return nil, errors.New("Incorrect Number of arguments.Expecting 3 for transfer")
 	}
@@ -168,7 +170,7 @@ func (t *SimpleChaincode) transfer(stub *shim.ChaincodeStub, args []string) ([]b
 	// Perform the transfer
 	X, err = strconv.Atoi(args[2])
 	Apoints = Apoints - X
-	Bpoints = Bval + X
+	Bpoints = Bpoints + X
 	fmt.Printf("Apoints = %d, Bpoints = %d\n", Apoints, Bpoints)
 
 	// Write the state back to the ledger
@@ -181,4 +183,6 @@ func (t *SimpleChaincode) transfer(stub *shim.ChaincodeStub, args []string) ([]b
 	if err != nil {
 		return nil, err
 	}
+
+    return nil, nil
 }
