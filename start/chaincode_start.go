@@ -23,13 +23,15 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 )
 
+type Customer struct {
+	custName	string  `json:"custName"`
+	points 		int		`json:"points"`
+}
+
 // SimpleChaincode example simple Chaincode implementation
 type SimpleChaincode struct {
 }
 
-// ============================================================================================================================
-// Main
-// ============================================================================================================================
 func main() {
 	err := shim.Start(new(SimpleChaincode))
 	if err != nil {
@@ -38,79 +40,145 @@ func main() {
 }
 
 // Init resets all the things
-func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	if len(args) != 1 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 1")
-	}
+func (t *SimpleChaincode) Init(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 	
-	err := stub.PutState("hello_world", []byte(args[0]))
-    if err != nil {
-        return nil, err
-    }
 
-    return nil, nil
+	var custA, custB string //custName
+
+	if len(args) != 2 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 4")
+	}
+
+	// Initialize the chaincode
+	custA = args[0]
+	custB = args[1]
+
+	// Write the state to the ledger
+	err = stub.PutState(A, []byte("1000"))
+	if err != nil {
+		return nil, err
+	}
+
+	err = stub.PutState(B, []byte("1000"))
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
-// Invoke is our entry point to invoke a chaincode function
-func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+// Invoke isur entry point to invoke a chaincode function
+func (t *SimpleChaincode) Invoke(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 	fmt.Println("invoke is running " + function)
 
-    // Handle different functions
-    if function == "init" {
-        return t.Init(stub, "init", args)
-    } else if function == "write" {
-        return t.write(stub, args)
-    }
-    fmt.Println("invoke did not find func: " + function)
+	// Handle different functions
+	if function == "init" {
+		return t.Init(stub, "init", args)
+	} else if function == "transfer" {
+		return t.transfer(stub, args)
+	}
+	fmt.Println("invoke did not find func: " + function)
 
-    return nil, errors.New("Received unknown function invocation: " + function)
+	return nil, errors.New("Received unknown function invocation: " + function)
 }
 
 // Query is our entry point for queries
-func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (t *SimpleChaincode) Query(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 	fmt.Println("query is running " + function)
 
-    // Handle different functions
-    if function == "read" {                            //read a variable
-        return t.read(stub, args)
-    }
-    fmt.Println("query did not find func: " + function)
+	// Handle different functions
+	if function == "read" { //read a variable
+		return t.read(stub, args)
+	}
+	fmt.Println("query did not find func: " + function)
 
-    return nil, errors.New("Received unknown function query: " + function)
+	return nil, errors.New("Received unknown function query: " + function)
 }
 
-func (t *SimpleChaincode) write(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-    var key, value string
-    var err error
-    fmt.Println("running write()")
+// write - invoke function to write key/value pair
+func (t *SimpleChaincode) write(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
+	var key, value string
+	var err error
+	fmt.Println("running write()")
 
-    if len(args) != 2 {
-        return nil, errors.New("Incorrect number of arguments. Expecting 2. name of the key and value to set")
-    }
+	if len(args) != 2 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 2. name of the key and value to set")
+	}
 
-    key = args[0]                            //rename for fun
-    value = args[1]
-    err = stub.PutState(key, []byte(value))  //write the variable into the chaincode state
-    if err != nil {
-        return nil, err
-    }
-    return nil, nil
+	key = args[0] //rename for funsies
+	value = args[1]
+	err = stub.PutState(key, []byte(value)) //write the variable into the chaincode state
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
 }
 
-func (t *SimpleChaincode) read(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-    var key, jsonResp string
-    var err error
+// read - query function to read key/value pair
+func (t *SimpleChaincode) read(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
+	var key, jsonResp string
+	var err error
 
-    if len(args) != 1 {
-        return nil, errors.New("Incorrect number of arguments. Expecting name of the key to query")
-    }
+	if len(args) != 1 {
+		return nil, errors.New("Incorrect number of arguments. Expecting name of the key to query")
+	}
 
-    key = args[0]
-    valAsbytes, err := stub.GetState(key)
-    if err != nil {
-        jsonResp = "{\"Error\":\"Failed to get state for " + key + "\"}"
-        return nil, errors.New(jsonResp)
-    }
+	key = args[0]
+	valAsbytes, err := stub.GetState(key)
+	if err != nil {
+		jsonResp = "{\"Error\":\"Failed to get state for " + key + "\"}"
+		return nil, errors.New(jsonResp)
+	}
 
-    return valAsbytes, nil
+	return valAsbytes, nil
+}
+
+func (t *SimpleChaincode) transfer(stub *shim.ChaincodeStub, args []string) ([]byte, error){
+	fmt.Println("transfer is running " + function)
+	if len(args) != 3{
+		return nil, errors.New("Incorrect Number of arguments.Expecting 3 for transfer")
+	}
+
+	var A, B string //custName
+	var Apoints, Bpoints int // custName points
+	var X int // transfer amt
+
+	A = args[0]
+	B = args[1]
+
+
+	Apointsbytes, err := stub.GetState(A)
+	if err != nil {
+		return nil, errors.New("Failed to get state of " + A)
+	}
+	if Apointsbytes == nil {
+		return nil, errors.New("Entity not found")
+	}
+	Apoints, _ = strconv.Atoi(string(Apointsbytes))
+
+	Bpointsbytes, err := stub.GetState(B)
+	if err != nil {
+		return nil, errors.New("Failed to get state of " + B)
+	}
+	if Bpointsbytes == nil {
+		return nil, errors.New("Entity not found")
+	}
+	Bpoints, _ = strconv.Atoi(string(Bpointsbytes))
+
+	// Perform the transfer
+	X, err = strconv.Atoi(args[2])
+	Apoints = Apoints - X
+	Bpoints = Bval + X
+	fmt.Printf("Apoints = %d, Bpoints = %d\n", Apoints, Bpoints)
+
+	// Write the state back to the ledger
+	err = stub.PutState(A, []byte(strconv.Itoa(Apoints)))
+	if err != nil {
+		return nil, err
+	}
+
+	err = stub.PutState(B, []byte(strconv.Itoa(Bpoints)))
+	if err != nil {
+		return nil, err
+	}
 }
